@@ -154,6 +154,16 @@ target_link_libraries(paho_iot_provisioning_sas_sample
     az::iot::sample::common
 )
 
+add_executable (iot_hub_poc
+  ${CMAKE_CURRENT_LIST_DIR}/iot_hub_poc.c
+)
+
+target_link_libraries(iot_hub_poc
+  PRIVATE
+    az::iot::sample::common
+)
+
+
 # Workaround for linker warning LNK4098: defaultlib 'LIBCMTD' conflicts with use of other libs
 if (MSVC)
     set_target_properties(

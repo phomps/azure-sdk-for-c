@@ -12,26 +12,30 @@ Proof of concept  for connection to Azure IoT hub using the Azure Embedded C SDK
 #include <azure/core/az_span.h>
 #include <azure/iot/az_iot_hub_client.h>
 
-char iot_hub_device_id = "patrick-test-pi";
-char iot_hub_hostname = "michaels-test-hub.azure-devices.net";
+char iot_hub_device_id[] = "patrick-test-pi";
+char iot_hub_hostname[] = "michaels-test-hub.azure-devices.net";
 static az_iot_hub_client hub_client;
+MQTTClient mqtt_client;
 
+void create_mqtt_client(void);
 
 int main(void) 
 {
-    MQTTClient client;
-    create_mqtt_client(&client);
+    create_mqtt_client();
 
-    connect_client_to_hub();
+    //connect_client_to_hub();
 }
 
-az_result create_mqtt_client()
+void create_mqtt_client()
 {
     int rc;
 
-    char mqtt_endpoint[128] = "ssl://michaels-test-hub.azure-devices.net:8883";
+    //char mqtt_endpoint[128] = "ssl://michaels-test-hub.azure-devices.net:8883";
 
-    rc = az_iot_hub_client_init(&hub_client, iot_hub_hostname, iot_hub_device_id, NULL);)
+    az_span id_span = AZ_SPAN_FROM_BUFFER(iot_hub_device_id);
+    az_span hostname_span = AZ_SPAN_FROM_BUFFER(iot_hub_hostname);
+
+    rc = az_iot_hub_client_init(&hub_client, hostname_span, id_span, NULL);
 
     if (az_result_failed(rc))
     {
@@ -40,7 +44,7 @@ az_result create_mqtt_client()
     }
     else
     {
-        printf("IoT Hub cleint created successfully");
+        printf("IoT Hub client created successfully\n");
     }
     
     
