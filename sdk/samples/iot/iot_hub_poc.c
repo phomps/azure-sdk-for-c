@@ -30,7 +30,8 @@ void create_mqtt_client()
 {
     int rc;
 
-    //char mqtt_endpoint[128] = "ssl://michaels-test-hub.azure-devices.net:8883";
+    char mqtt_endpoint[128] = "ssl://michaels-test-hub.azure-devices.net:8883";
+    char mqtt_client_id[128] = "patrick-test-pi";
 
     az_span id_span = AZ_SPAN_FROM_BUFFER(iot_hub_device_id);
     az_span hostname_span = AZ_SPAN_FROM_BUFFER(iot_hub_hostname);
@@ -46,6 +47,16 @@ void create_mqtt_client()
     {
         printf("IoT Hub client created successfully\n");
     }
-    
-    
+
+    rc = MQTTClient_create(&mqtt_client, mqtt_endpoint, mqtt_client_id, MQTTCLIENT_PERSISTENCE_NONE, NULL);
+
+    if(rc != MQTTCLIENT_SUCCESS)
+    {
+	printf("Failed  to create MQTT client: MQTTClient return code %d\n", rc);
+    }
+
+    else
+    {
+	printf("MQTT Client created successfully!\n");
+    }
 }
