@@ -18,15 +18,13 @@ Proof of concept  for connection to Azure IoT hub using the Azure Embedded C SDK
 
 #define MQTT_TIMEOUT_RECEIVE_MS (60 * 1000)
 
-// Hardcoded in for now, can be optained through environment variables if necessary
-// char iot_hub_device_id[] = "patrick-test-pi-2";
-// char iot_hub_hostname[] = "michaels-test-hub.azure-devices.net";
-
 static az_iot_hub_client hub_client;
 MQTTClient mqtt_client;
 
 // Could not get the username fucntion to generate this string properly, so it is hardcoded
-char mqtt_client_username[128] = "michaels-test-hub.azure-devices.net/patrick-test-pi-2/?api-version=2018-06-30&DeviceClientType=c%2F1.0.0-preview.6";
+char mqtt_client_username[128];
+char* iot_device_id_buffer;
+char* iot_hostname_buffer;
 
 // These functions are basically intended to mimic those in the other iot_hub samples
 void create_mqtt_client(void);
@@ -79,13 +77,15 @@ void create_mqtt_client()
 {
     int rc;
 
-    char* iot_device_id_buffer = getenv("AZ_IOT_HUB_DEVICE_ID");
-    char* iot_hostname_buffer = getenv("AZ_IOT_HUB_HOSTNAME");
+    iot_device_id_buffer = getenv("AZ_IOT_HUB_DEVICE_ID");
+    iot_hostname_buffer = getenv("AZ_IOT_HUB_HOSTNAME");
     
     // hub_client_init expects 'az_span's
-    az_span id_span = AZ_SPAN_FROM_BUFFER(iot_device_id_buffer);
-    az_span hostname_span = AZ_SPAN_FROM_BUFFER(iot_hostname_buffer);
+    az_span id_span = az_span_create_from_str(iot_device_id_buffer);
+    az_span hostname_span = az_span_create_from_str(iot_hostname_buffer);
 
+
+    // The hub client is used to easily obtain necessary info for IoT Hub communication
     rc = az_iot_hub_client_init(&hub_client, hostname_span, id_span, NULL);
 
     if (az_result_failed(rc))
@@ -98,17 +98,17 @@ void create_mqtt_client()
         printf("IoT Hub client created successfully\n");
     }
     
-    // Could not get commented function below to return the proper id, so it is hardcoded
-    char mqtt_client_id[128] = "patrick-test-pi-2";
+    // This client ID is used to create the MQTT client
+    char mqtt_client_id[128];
 
-    /*rc = az_iot_hub_client_get_client_id(
+    rc = az_iot_hub_client_get_client_id(
 	&hub_client, mqtt_client_id,  sizeof(mqtt_client_id), NULL);
 
     if(az_result_failed(rc))
     {
 	printf("Failed to get MQTT client id 0x%08x.", rc);
 	exit(rc);
-    }*/
+    }
 
     // Hardcoded, but could be easily constructed from a user input if necessary
     char mqtt_endpoint[128] = "ssl://michaels-test-hub.azure-devices.net:8883";
@@ -139,9 +139,9 @@ void connect_client_to_hub()
 	return;
     }
 
-    // This function will not work properly and just sets username to hostname (?)
-    // Username is hard coded in
-    /*rc = az_iot_hub_client_get_user_name(
+
+    // This function creates the MQTT user name string from the credentials in the hub client
+    rc = az_iot_hub_client_get_user_name(
 	&hub_client, mqtt_client_username, sizeof(mqtt_client_username), NULL); 
     if(az_result_failed(rc))
     {
@@ -152,8 +152,10 @@ void connect_client_to_hub()
     else
     {
 	printf("Get IoT Hub client username successful\n");
-    }*/
+    }
 
+
+    // Here we set the desired connection options and connect our MQTT client to the server
     MQTTClient_connectOptions mqtt_connect_options = MQTTClient_connectOptions_initializer;
     mqtt_connect_options.username = mqtt_client_username;
     printf("AZ IoT Hub username: %s\n", mqtt_connect_options.username);
@@ -197,7 +199,7 @@ void send_message_to_iot_hub()
 {
     int rc;
 
-    char telemetry_topic_buffer[128] = "devices/patrick-test-pi-2/messages/events/";
+    // Construct a small JSON payload from a user input
     char user_msg[25];
     char message_payload[50] = "{\"Message\":\"";
 
@@ -207,7 +209,10 @@ void send_message_to_iot_hub()
     strcat(message_payload, user_msg);
     strcat(message_payload, "\"}");
 
-    /*
+    // Get the MQTT topic string
+    // The format for a typical device is "devices/<iot hub device id>/messages/events"
+    char telemetry_topic_buffer[128];
+
     rc = az_iot_hub_client_telemetry_get_publish_topic(
 	&hub_client, NULL, telemetry_topic_buffer, sizeof(telemetry_topic_buffer), NULL);
 
@@ -216,8 +221,8 @@ void send_message_to_iot_hub()
 	printf("Failed to get telemtry publish topic. Error code: %d\n", rc);
 	exit(rc);
     }
-    */
 
+    // Publish the MQTT message to the specified topic
     rc = MQTTClient_publish(
 	mqtt_client, telemetry_topic_buffer, (int)strlen(message_payload), message_payload, 1, 0, NULL);
 
