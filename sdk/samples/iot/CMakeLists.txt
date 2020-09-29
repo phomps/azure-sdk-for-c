@@ -154,6 +154,7 @@ target_link_libraries(paho_iot_provisioning_sas_sample
     az::iot::sample::common
 )
 
+# IoT Hub communication proof of concept (Created by Patrick Thompson)
 add_executable (iot_hub_poc
   ${CMAKE_CURRENT_LIST_DIR}/iot_hub_poc.c
 )

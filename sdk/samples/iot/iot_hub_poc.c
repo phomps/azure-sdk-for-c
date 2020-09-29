@@ -13,16 +13,22 @@ Proof of concept  for connection to Azure IoT hub using the Azure Embedded C SDK
 #include <azure/core/az_span.h>
 #include <azure/iot/az_iot_hub_client.h>
 
+// This is where AZIoT sends C2D messages
 #define AZ_IOT_HUB_SUBSCRIBE_TOPIC "devices/+/messages/devicebound/#"
+
 #define MQTT_TIMEOUT_RECEIVE_MS (60 * 1000)
 
-char iot_hub_device_id[] = "patrick-test-pi-2";
-char iot_hub_hostname[] = "michaels-test-hub.azure-devices.net";
+// Hardcoded in for now, can be optained through environment variables if necessary
+// char iot_hub_device_id[] = "patrick-test-pi-2";
+// char iot_hub_hostname[] = "michaels-test-hub.azure-devices.net";
 
 static az_iot_hub_client hub_client;
 MQTTClient mqtt_client;
+
+// Could not get the username fucntion to generate this string properly, so it is hardcoded
 char mqtt_client_username[128] = "michaels-test-hub.azure-devices.net/patrick-test-pi-2/?api-version=2018-06-30&DeviceClientType=c%2F1.0.0-preview.6";
 
+// These functions are basically intended to mimic those in the other iot_hub samples
 void create_mqtt_client(void);
 void connect_client_to_hub(void);
 void subscribe_to_iot_hub_topic(void);
@@ -73,10 +79,12 @@ void create_mqtt_client()
 {
     int rc;
 
-    char mqtt_endpoint[128] = "ssl://michaels-test-hub.azure-devices.net:8883";
-
-    az_span id_span = AZ_SPAN_FROM_BUFFER(iot_hub_device_id);
-    az_span hostname_span = AZ_SPAN_FROM_BUFFER(iot_hub_hostname);
+    char* iot_device_id_buffer = getenv("AZ_IOT_HUB_DEVICE_ID");
+    char* iot_hostname_buffer = getenv("AZ_IOT_HUB_HOSTNAME");
+    
+    // hub_client_init expects 'az_span's
+    az_span id_span = AZ_SPAN_FROM_BUFFER(iot_device_id_buffer);
+    az_span hostname_span = AZ_SPAN_FROM_BUFFER(iot_hostname_buffer);
 
     rc = az_iot_hub_client_init(&hub_client, hostname_span, id_span, NULL);
 
@@ -90,7 +98,9 @@ void create_mqtt_client()
         printf("IoT Hub client created successfully\n");
     }
     
+    // Could not get commented function below to return the proper id, so it is hardcoded
     char mqtt_client_id[128] = "patrick-test-pi-2";
+
     /*rc = az_iot_hub_client_get_client_id(
 	&hub_client, mqtt_client_id,  sizeof(mqtt_client_id), NULL);
 
@@ -99,6 +109,9 @@ void create_mqtt_client()
 	printf("Failed to get MQTT client id 0x%08x.", rc);
 	exit(rc);
     }*/
+
+    // Hardcoded, but could be easily constructed from a user input if necessary
+    char mqtt_endpoint[128] = "ssl://michaels-test-hub.azure-devices.net:8883";
 
     rc = MQTTClient_create(&mqtt_client, mqtt_endpoint, mqtt_client_id, MQTTCLIENT_PERSISTENCE_NONE, NULL);
 
