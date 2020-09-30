@@ -78,8 +78,19 @@ void create_mqtt_client()
     int rc;
 
     iot_device_id_buffer = getenv("AZ_IOT_HUB_DEVICE_ID");
+    if(iot_device_id_buffer == NULL)
+    {
+	printf("Please set the AZ_IOT_HUB_DEVICE_ID environment variable\n");
+	return;
+    }
+
     iot_hostname_buffer = getenv("AZ_IOT_HUB_HOSTNAME");
-    
+    if(iot_hostname_buffer == NULL)
+    {
+	printf("Please set the AZ_IOT_HUB_HOSTNAME environment variable\n");
+	return;
+    }
+
     // hub_client_init expects 'az_span's
     az_span id_span = az_span_create_from_str(iot_device_id_buffer);
     az_span hostname_span = az_span_create_from_str(iot_hostname_buffer);
@@ -110,8 +121,10 @@ void create_mqtt_client()
 	exit(rc);
     }
 
-    // Hardcoded, but could be easily constructed from a user input if necessary
-    char mqtt_endpoint[128] = "ssl://michaels-test-hub.azure-devices.net:8883";
+    // Construct the endpoint for the MQTT connection
+    char mqtt_endpoint[128] = "ssl://";
+    strcat(mqtt_endpoint, iot_hostname_buffer);
+    strcat(mqtt_endpoint, ":8883");
 
     rc = MQTTClient_create(&mqtt_client, mqtt_endpoint, mqtt_client_id, MQTTCLIENT_PERSISTENCE_NONE, NULL);
 
@@ -135,7 +148,7 @@ void connect_client_to_hub()
     char* key_store_filepath = getenv("AZ_IOT_DEVICE_X509_CERT_PEM_FILE_PATH");
     if(key_store_filepath == NULL)
     {
-	printf("Please set AZ_IOT_DEVICE_X509_CERT_PEM_FILE_PATH env variable");
+	printf("Please set AZ_IOT_DEVICE_X509_CERT_PEM_FILE_PATH env variable\n");
 	return;
     }
 
