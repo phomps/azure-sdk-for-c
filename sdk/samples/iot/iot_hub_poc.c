@@ -31,10 +31,13 @@ void create_mqtt_client(void);
 void connect_client_to_hub(void);
 void subscribe_to_iot_hub_topic(void);
 void send_message_to_iot_hub(void);
-void receive_c2d_message(void);
+int message_arrived(void* context, char* topicName, int topicLen, MQTTClient_message* message);
+//void connection_lost(void* context, char* cause);
 
 int main(void) 
 {
+    int rc;
+
     create_mqtt_client();
 
     connect_client_to_hub();
@@ -43,23 +46,18 @@ int main(void)
 
     printf("\n**********\nWelcome to Patrick's Azure IoT Hub POC!\n**********\n");
 
-    char resp[10];
+    char resp[2];
     while(1)
     {
-	printf("\nWould you like to send message, receive message, or exit (s/r/e)?\n");
+	printf("\nWould you like to send message or exit (s/e)?\n");
 	scanf("%s", resp);
 
-	if(strcmp(resp, "s") == 0)
+	if(resp[0] == 's')
 	{
 	    send_message_to_iot_hub();
 	}
 	
-	else if(strcmp(resp, "r") == 0)
-	{
-	    receive_c2d_message();
-	}
-
-	else if(strcmp(resp, "e") == 0)
+	else if(resp[0] == 'e')
 	{
 	    break;
 	}
@@ -69,8 +67,18 @@ int main(void)
 	    printf("Invalid response.\n\n");
 	}
     }
+    
+    rc = MQTTClient_disconnect(mqtt_client, 10000);
+    if(rc != MQTTCLIENT_SUCCESS)
+    {
+	printf("Failed to disconnect MQTT client. Error code %d\n", rc);
+    }
+
+    MQTTClient_destroy(&mqtt_client);
 
     printf("Thanks for playing!\n");
+
+    return rc;;
 }
 
 void create_mqtt_client()
@@ -137,6 +145,17 @@ void create_mqtt_client()
     {
 	printf("MQTT Client created successfully!\n");
     }
+ 
+    // Here we set the callback function for when we receive a message
+    // This allows asynchronous message reception
+    rc = MQTTClient_setCallbacks(mqtt_client, NULL, NULL, message_arrived, NULL);
+    if(rc != MQTTCLIENT_SUCCESS)
+    {
+	printf("Failed to set MQTT Client callbacks. Error code: %d\n", rc);
+	exit(rc);
+    }
+
+
 }
 
 void connect_client_to_hub()
@@ -213,11 +232,42 @@ void send_message_to_iot_hub()
     int rc;
 
     // Construct a small JSON payload from a user input
-    char user_msg[25];
+    char user_msg[26];
+    char input;
+    int i = 0;
     char message_payload[50] = "{\"Message\":\"";
 
+    getchar();
     printf("Enter a brief test message:\n");
-    scanf("%s", user_msg);
+    while(1)
+    {
+	input = (char)getchar();
+
+	if(input == '\n')
+	{
+	    break;
+	}
+
+	if(i == 24)
+	{
+	    printf("Message length limit reached, truncating to 25 chars\n");
+	    i++;
+	    continue;
+	}
+
+	// Ignore all inputs after reading the 25th input
+	else if(i == 25)
+	{
+	    input = (char)getchar();
+	    continue;
+	}
+
+	user_msg[i] = input;
+
+	i++;
+    }
+    
+    user_msg[i] = '\0';
 
     strcat(message_payload, user_msg);
     strcat(message_payload, "\"}");
@@ -251,35 +301,11 @@ void send_message_to_iot_hub()
     }
 }
 
-void receive_c2d_message()
+int message_arrived(void* context, char* topicName, int topicLen, MQTTClient_message* message)
 {
-    int rc;
-    char* topic = NULL;
-    int topic_len = 0;
-    MQTTClient_message *message = NULL;
+    printf("\n********\nMessage Received from IoT Hub\n********\n");
 
-    printf("Waiting for message from IoT Hub...\n");
-
-    rc = MQTTClient_receive(mqtt_client, &topic, &topic_len, &message, MQTT_TIMEOUT_RECEIVE_MS);
-    if((rc != MQTTCLIENT_SUCCESS) && (rc != MQTTCLIENT_TOPICNAME_TRUNCATED))
-    {
-	printf("Failed to receive MQTT Message. Error code: %d\n", rc);
-	exit(rc);
-    }
-
-    else if(message == NULL)
-    {
-	printf("Message timeout expired\n");
-    }
-
-    else if(rc == MQTTCLIENT_TOPICNAME_TRUNCATED)
-    {
-	topic_len = (int)strlen(topic);
-    }
-
-    printf("Message Received from IoT Hub\n");
-
-    az_iot_hub_client_c2d_request c2d_request;
+    /*az_iot_hub_client_c2d_request c2d_request;
     az_span const topic_span = az_span_create((uint8_t*)topic, topic_len);
 
     rc = az_iot_hub_client_c2d_parse_received_topic(
@@ -289,8 +315,13 @@ void receive_c2d_message()
     {
 	printf("Message from unknown topic: %s. Error code: %d\n", topic, rc);
 	exit(rc);
-    }
+    }*/
 
-    printf("Topic: %s\n", topic);
+    printf("Context: %s\n", (char*)context);
+    printf("Topic: %s; \nTopic Length: %d\n", topicName, topicLen);
     printf("Payload: %s\n", (char*)message->payload);
+    MQTTClient_freeMessage(&message);
+    MQTTClient_free(topicName);
+
+    return 1;
 }
