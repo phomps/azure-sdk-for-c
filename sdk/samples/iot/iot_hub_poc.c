@@ -11,6 +11,7 @@ Proof of concept  for connection to Azure IoT hub using the Azure Embedded C SDK
 
 #include <azure/core/az_result.h>
 #include <azure/core/az_span.h>
+#include <azure/core/az_json.h>
 #include <azure/iot/az_iot_hub_client.h>
 
 // This is where AZIoT sends C2D messages
@@ -32,6 +33,7 @@ void connect_client_to_hub(void);
 void subscribe_to_iot_hub_topic(void);
 void send_message_to_iot_hub(void);
 int message_arrived(void* context, char* topicName, int topicLen, MQTTClient_message* message);
+void send_nx_event(bool occupied);
 //void connection_lost(void* context, char* cause);
 
 int main(void) 
@@ -54,7 +56,8 @@ int main(void)
 
 	if(resp[0] == 's')
 	{
-	    send_message_to_iot_hub();
+	    //send_message_to_iot_hub();
+	    send_nx_event(true);
 	}
 	
 	else if(resp[0] == 'e')
@@ -324,4 +327,63 @@ int message_arrived(void* context, char* topicName, int topicLen, MQTTClient_mes
     MQTTClient_free(topicName);
 
     return 1;
+}
+
+void send_nx_event(bool occupied)
+{
+    int rc;
+
+    az_json_writer json_writer;
+
+    char json_buffer[200];
+    az_span json_span = az_span_create((uint8_t*)json_buffer, 200);
+
+    az_json_writer_options options = az_json_writer_options_default();
+
+    rc = az_json_writer_init(&json_writer, json_span, &options);
+    if(az_result_failed(rc))
+    {
+	printf("Failed to initialize JSON writer. Error code: %d\n", rc);
+	exit(rc);
+    }
+
+    rc = az_json_writer_append_begin_object(&json_writer);	
+
+    az_span value  = AZ_SPAN_FROM_STR("Occupancy");
+
+    rc = az_json_writer_append_property_name(&json_writer, value);
+
+    rc = az_json_writer_append_bool(&json_writer, occupied);
+
+    rc = az_json_writer_append_end_object(&json_writer);
+
+    //az_span_to_str(json_buffer, 200, json_span);
+
+    // Get the MQTT topic string
+    // The format for a typical device is "devices/<iot hub device id>/messages/events"
+    char telemetry_topic_buffer[128];
+
+    rc = az_iot_hub_client_telemetry_get_publish_topic(
+        &hub_client, NULL, telemetry_topic_buffer, sizeof(telemetry_topic_buffer), NULL);
+
+    if(az_result_failed(rc))
+    {
+        printf("Failed to get telemtry publish topic. Error code: %d\n", rc);
+        exit(rc);
+    }
+
+    // Publish the MQTT message to the specified topic
+    rc = MQTTClient_publish(
+        mqtt_client, telemetry_topic_buffer, (int)strlen(json_buffer), json_buffer, 1, 0, NULL);
+
+    if(rc != MQTTCLIENT_SUCCESS)
+    {
+        printf("Failed to send MQTT message. Error code: %d\n", rc);
+        exit(rc);
+    }
+
+    else
+    {
+        printf("MQTT Message published to topic: %s.\n", telemetry_topic_buffer);
+    }
 }
