@@ -335,7 +335,7 @@ void send_nx_event(bool occupied)
 
     az_json_writer json_writer;
 
-    char json_buffer[200];
+    char json_buffer[400];
     az_span json_span = az_span_create((uint8_t*)json_buffer, 200);
 
     az_json_writer_options options = az_json_writer_options_default();
@@ -347,15 +347,20 @@ void send_nx_event(bool occupied)
 	exit(rc);
     }
 
-    rc = az_json_writer_append_begin_object(&json_writer);	
-
-    az_span value  = AZ_SPAN_FROM_STR("Occupancy");
-
-    rc = az_json_writer_append_property_name(&json_writer, value);
-
-    rc = az_json_writer_append_bool(&json_writer, occupied);
-
-    rc = az_json_writer_append_end_object(&json_writer);
+    sprintf(json_buffer, "{\
+    \"Type\": \"ebi.nx.event\",\
+    \"Sequence\": 81,\
+    \"Timestamp\": \"2020-01-04T14:30:42.602Z\",\
+    \"CustomerUuid\": \"AA8FD43B-D67E-4DE0-9DCA-3352B54750C4\",\
+    \"FacilityUuid\": \"1D774AF1-89D6-4ED9-A7D8-63191E478E8D\",\
+    \"GatewayUuid\": \"18D3BA43-789A-493B-A79F-E5A1848B3EE8\",\
+    \"Area\": 3,\
+    \"Zone\": 21,\
+    \"Aisle\": \"18\",\
+    \"Fixture\": 6,\
+    \"MAC\": 17094380,\
+    \"Occupancy\": %s\
+    }", (occupied) ? "true" : "false");
 
     //az_span_to_str(json_buffer, 200, json_span);
 
