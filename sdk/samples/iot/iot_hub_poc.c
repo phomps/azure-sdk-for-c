@@ -49,25 +49,31 @@ int main(void)
     printf("\n**********\nWelcome to Patrick's Azure IoT Hub POC!\n**********\n");
 
     char resp[2];
-    while(1)
+    while(resp[0] != 'e')
     {
-	printf("\nWould you like to send message or exit (s/e)?\n");
+	printf("\nEnter one of the following:\nSend Message (s)\nSend nx occupied event (o)\nSend nx not occupied message (n)\nExit (e)\n");
 	scanf("%s", resp);
 
-	if(resp[0] == 's')
-	{
-	    //send_message_to_iot_hub();
-	    send_nx_event(true);
-	}
+	switch(resp[0]) {
 	
-	else if(resp[0] == 'e')
-	{
-	    break;
-	}
+	    case 's':
+		send_message_to_iot_hub();
+		break;
+	    
+	    case 'o':
+		send_nx_event(true);
+		break;
+	
+	    case 'n':
+	    	send_nx_event(false);
+		break;
 
-	else
-	{
-	    printf("Invalid response.\n\n");
+	    case 'e':
+		break;
+	    
+	    default:
+	    	printf("Invalid response.\n\n");
+		break;
 	}
     }
     
@@ -362,7 +368,6 @@ void send_nx_event(bool occupied)
     \"Occupancy\": %s\
     }", (occupied) ? "true" : "false");
 
-    //az_span_to_str(json_buffer, 200, json_span);
 
     // Get the MQTT topic string
     // The format for a typical device is "devices/<iot hub device id>/messages/events"
