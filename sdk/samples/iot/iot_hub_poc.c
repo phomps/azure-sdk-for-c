@@ -51,7 +51,7 @@ int main(void)
     char resp[2];
     while(resp[0] != 'e')
     {
-	printf("\nEnter one of the following:\nSend Message (s)\nSend nx occupied event (o)\nSend nx not occupied message (n)\nExit (e)\n");
+	printf("\nEnter one of the following:\nSend Message (s)\nSend nx occupied event (o)\nSend nx not occupied event (n)\nExit (e)\n");
 	scanf("%s", resp);
 
 	switch(resp[0]) {
@@ -329,6 +329,7 @@ int message_arrived(void* context, char* topicName, int topicLen, MQTTClient_mes
     printf("Context: %s\n", (char*)context);
     printf("Topic: %s; \nTopic Length: %d\n", topicName, topicLen);
     printf("Payload: %s\n", (char*)message->payload);
+    message->payload = NULL;
     MQTTClient_freeMessage(&message);
     MQTTClient_free(topicName);
 
